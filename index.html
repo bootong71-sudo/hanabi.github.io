@@ -88,7 +88,7 @@ class Particle{
     this.color=color;
     this.size=size;
     this.isNiagara=isNiagara;
-    this.life=isNiagara? 120 : 50; // ナイアガラは約2秒
+    this.life=isNiagara? 120 : 50;
   }
   update(){ 
     this.x+=this.vx; 
@@ -109,33 +109,45 @@ class Particle{
 
 // 花火
 class Firework{
-  constructor(isBig=false, isNiagara=false){
+  constructor(isBig=false, isNiagara=false, startX=null, targetY=null){
     this.isBig=isBig; this.isNiagara=isNiagara;
-    if(isNiagara){ this.x=Math.random()*canvas.width; this.targetY=canvas.height; }
-    else if(isBig){ this.x=canvas.width/2; this.targetY=canvas.height/3; }
-    else { this.x=Math.random()*canvas.width; this.targetY=Math.random()*canvas.height/2; }
+    if(isNiagara){ 
+      this.x = startX ?? Math.random()*canvas.width; 
+      this.targetY = canvas.height; 
+    }
+    else if(isBig){ 
+      this.x = startX ?? canvas.width/2; 
+      this.targetY = targetY ?? canvas.height/3; 
+    }
+    else { 
+      this.x = startX ?? Math.random()*canvas.width; 
+      this.targetY = targetY ?? Math.random()*canvas.height/2; 
+    }
     this.y=canvas.height;
     this.exploded=false; this.particles=[]; this.launched=false;
   }
 
   update(){
     if(!this.exploded){
-      if(!this.isNiagara)this.y-=7;
+      if(!this.isNiagara) this.y-=7;
       if(!this.launched){ launchSound.currentTime=0; launchSound.play(); this.launched=true; }
       if((this.isNiagara && Math.random()<0.02) || this.y<=this.targetY){
         this.exploded=true;
-        if(this.isNiagara) boomSound.currentTime=0, boomSound.play(), flashScreen();
+        if(this.isNiagara) { boomSound.currentTime=0; boomSound.play(); flashScreen(); }
         else explodeSound.currentTime=0, explodeSound.play();
+
         let count,size,speedMultiplier,vyMult=1;
         if(this.isNiagara){ 
           count=150; size=5; speedMultiplier=1; vyMult=3; 
           for(let i=0;i<count;i++){
-            const color=`hsl(${Math.random()*50+40},100%,60%)`; // 太陽光っぽい色
+            const color=`hsl(${Math.random()*50+40},100%,60%)`; 
             this.particles.push(new Particle(this.x,this.y,color,size,speedMultiplier,vyMult,true));
           }
         }
         else if(this.isBig){ 
-          count=parseInt(bigParticleCountSlider.value); size=parseInt(bigParticleSizeSlider.value); speedMultiplier=parseFloat(bigParticleSpeedSlider.value); 
+          count=parseInt(bigParticleCountSlider.value); 
+          size=parseInt(bigParticleSizeSlider.value); 
+          speedMultiplier=parseFloat(bigParticleSpeedSlider.value); 
           for(let i=0;i<count;i++){
             const color=`hsl(${Math.random()*360},100%,50%)`;
             this.particles.push(new Particle(this.x,this.y,color,size,speedMultiplier,vyMult));
@@ -143,6 +155,7 @@ class Firework{
         }
         else{ 
           count=parseInt(particleCountSlider.value); 
+          speedMultiplier=parseFloat(particleSpeedSlider.value);
           for(let i=0;i<count;i++){
             size=2+Math.random()*6;
             const color=`hsl(${Math.random()*360},100%,50%)`;
@@ -178,7 +191,11 @@ function flashScreen(){
 }
 
 // アニメーション
-let fireworks=[]; let lastFireTime=0; const fireDelay=200; let fireCount=0;
+let fireworks=[]; 
+let lastFireTime=0; 
+const fireDelay=200; 
+let fireCount=0;
+
 document.addEventListener("keydown", (e)=>{
   const now=Date.now();
   if(e.key==="F1"){
@@ -190,6 +207,20 @@ document.addEventListener("keydown", (e)=>{
     fireCount++;
     if(fireCount%30===0){ for(let i=0;i<30;i++)fireworks.push(new Firework(false,true)); }
     else fireworks.push(new Firework(fireCount%10===0));
+    lastFireTime=now;
+  }
+});
+
+// ★ クリックで花火発射（クリック位置から）★
+canvas.addEventListener("click",(e)=>{
+  const now=Date.now();
+  if(now-lastFireTime>=fireDelay){
+    fireCount++;
+    const rect=canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    if(fireCount%30===0){ for(let i=0;i<30;i++)fireworks.push(new Firework(false,true, clickX)); }
+    else fireworks.push(new Firework(fireCount%10===0, false, clickX, clickY));
     lastFireTime=now;
   }
 });
@@ -210,7 +241,7 @@ function animate(){
   }
 
   if(flashAlpha>0){
-    ctx.fillStyle=`rgba(255,200,100,${flashAlpha})`; // 太陽光色
+    ctx.fillStyle=`rgba(255,200,100,${flashAlpha})`;
     ctx.fillRect(0,0,canvas.width,canvas.height);
   }
 
